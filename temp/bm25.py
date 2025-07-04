@@ -1,20 +1,34 @@
+import regex
+
+import pandas as pd
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem.snowball import SnowballStemmer
+from rank_bm25 import BM25Okapi
 
-nltk.download("popular")
-nltk.download("punkt")
-nltk.download("stopwords")
 
-stemmer = SnowballStemmer("russian")
-text = "Листовые листочки лист листва листве почему так"
+def tokenize(text: str) -> list[str]:
+    stemmer = SnowballStemmer("russian")
+    stop_words = set(stopwords.words('russian'))
+    text_wo_punct = regex.sub(r"[^\p{L}|\p{N}]+", " ", text)
+    tokens = word_tokenize(text_wo_punct)
+    tokens = [word for word in tokens if word not in stop_words]
+    stemmed_words = [stemmer.stem(word) for word in tokens]
+    return stemmed_words
 
-stop_words = set(stopwords.words('russian'))
-filtered_tokens = [word for word in tokens if word not in stop_words]
 
-print(filtered_tokens)
+if __name__ == "__main__":
+    nltk.download("popular")
+    nltk.download("punkt_tab")
+    nltk.download("stopwords")
 
-tokens = word_tokenize(text)
-stemmed_words = [stemmer.stem(word) for word in tokens]
-print(stemmed_words)
+    df = pd.read_csv("~/temp/embed/toy_dataset.csv")
+    docs = df.text.tolist()
+    tokenized_docs = [tokenize(d) for d in docs]
+    bm25 = BM25Okapi(tokenized_docs)
+
+    for d in tokenized_docs:
+        scores = bm25.get_scores(d)
+        pass
+        
