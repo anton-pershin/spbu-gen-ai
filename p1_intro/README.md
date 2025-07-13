@@ -101,3 +101,9 @@ Let's have a look at the chat template used by Qwen 2.5:
     {{- '<|im_start|>assistant\\n' }}\n
 {%- endif %}\n",
 ```
+
+# OpenAI REST API
+
+API specification: https://platform.openai.com/docs/api-reference/introduction
+
+TODO
