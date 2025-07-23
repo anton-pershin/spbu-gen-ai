@@ -113,3 +113,5 @@ After running the container, the following line will be printed to stdout:
 ```
 main: server is listening on http://0.0.0.0:8123 - starting the main loop
 ```
+
+Note that the server caches prompts by default. Take this into account while measuring performance.
