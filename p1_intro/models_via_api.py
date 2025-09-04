@@ -26,6 +26,10 @@ def run_requests(messages: list[dict[str, str]]) -> None:
 
     response_json = json.loads(r.text)
     print(response_json["choices"][0]["message"]["content"])
+    # Code for dumping:
+    # import json
+    # f = open("response.json", "w")
+    # json.dump(response_json, f, indent=2)
 
 
 def run_openai(messages: list[dict[str, str]]) -> None:
