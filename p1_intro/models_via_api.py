@@ -31,6 +31,14 @@ def run_requests(messages: list[dict[str, str]]) -> None:
     # f = open("response.json", "w")
     # json.dump(response_json, f, indent=2)
 
+    # Request for aider:
+    # I want the number of tokens used in the session to be printed after each LLM answer. I expect a print statement to be added in rally/scripts/chat.py and I expect that certain functions are to be amended in rally/interaction.py
+    # NOTE: DO NOT FORGET ABOUT /ask
+    # NOTE: command for reverting the commit:
+    # $ git stash 
+    # $ git reset --hard HEAD~1
+    # $ git stash pop
+
 
 def run_openai(messages: list[dict[str, str]]) -> None:
     client = OpenAI(
