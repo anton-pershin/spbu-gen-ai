@@ -83,9 +83,6 @@ They say that they "offload" layers on GPUs so do not be confused with this lang
 During the model loading, there will be a message printed to stdout saying how many layers are "offloaded" to GPUs and CPU.
 Check this message carefully to be sure that the layers have been distributed as planned.
 
-`llama.cpp` employs pipeline parallelism which means that the each GPU hosts its own layers and GPUs are run sequentially.
-Not every efficient, that's why vLLM with its tensor parallelism may be preferred.
-
 Once the prompt has been processed, you should observe the following performance metrics (maybe even more):
 ```
 prompt eval time =    2286.99 ms /    31 tokens (   73.77 ms per token,    13.55 tokens per second)
@@ -115,3 +112,74 @@ main: server is listening on http://0.0.0.0:8123 - starting the main loop
 ```
 
 Note that the server caches prompts by default. Take this into account while measuring performance.
+
+## Inference peculiarities
+
+### Input layer (token embedding) on CPU
+
+No matter whether you offload all the layers on GPU or not, the input layer is [hardcoded to run on CPU](https://github.com/ggml-org/llama.cpp/blob/master/src/llama-model.cpp):
+```cpp
+// assign the input layer
+// there is very little benefit to offloading the input layer, so always keep it on the CPU
+pimpl->dev_input = { cpu_dev, &pimpl->cpu_buft_list };
+```
+
+This makes sense.
+The embedding matrix is huge while there are no compute-bound operations related to it - we just take a vector from it by index (i.e., token).
+Let's take Qwen 2.5 7B in BF16 as an example.
+Its embedding matrix has shape 152064x3584, i.e. its would consume about 1 GB of VRAM without any compute being involved.
+One could say that CPU -> GPU transfer would be time-consuming but the amount of data transferred is actually small.
+In the prefill stage, it is just 28 MB for 4k context.
+Given that the standard duration of the prefill stage is about 2 s, this overhead can be ignored.
+In the decode stage, it is just 7 KB per one forward pass which typically takes 50 ms.
+
+### Parallel decoding
+
+You can enable batched inference (i.e., processing several requests in parallel) by `-np <N>` flag.
+By default, continuous batching is supported benefiting different-length-of-prompts-or-completions scenarios.
+If you want to use static batching benefiting same-length scenarios, you need to add `-nocb` flag.
+
+There is an interesting problem related to parallel decoding.
+Despite the name, flag `-c <context_length>` does not precisely correspond to the context size.
+In fact, this is the number of tokens in a KV cache in a single layer.
+Given that the KV cache is unified in `llama.cpp`, it means that the actual eligible context length is `context_length / N`.
+
+### Distributed inference
+
+`llama.cpp` supports two types of distributed inference: tensor parallelism and pipeline parallelism.
+They terminology is a bit different though.
+They call it the "split mode" where tensor parallelism is "splitting by rows" and pipeline parallelism is "splitting by layers":
+* `-sm <mode>` (`layer` or `row`)
+
+Splitting by layers is enabled by default.
+It will just distribute layers to the available GPUs evenly.
+In a single-request mode, this will lead to GPU underutilization because when the i-th GPU is working others are idle.
+Theoretically, this should not be a problem in batched inference but I am not sure `llama.cpp` supports "parallel" mode in pipeline parallelism.
+
+Splitting by rows implies splitting all the matrix rows beforehand and sending them to dedicated GPUs.
+It looks like tensor parallelism but [it seems](https://github.com/ggml-org/llama.cpp/issues/9086) that they do `all-reduce` after each operation.
+E.g., they do not have simple optimizations for subsequent matmuls (split by columns then split by rows).
+Perhaps, this overhead is negligible if we have an NVLink bridge but it will only slow down inference if our GPUs are connected via PCIExpress only.
+The conclusion is that this mode implementation is highly suboptimal.
+
+### FlashAttention
+
+`llama.cpp` supports FlashAttention with the `-fa` flag which is disabled by default.
+It significanty reduces the prefill time for long prompts if the model is fully offloaded to GPU (CPU and Vulkan support is either absent or limited). 
+
+### KV cache quantization
+
+You can control K and V cache quantization separately:
+* `-ctk <type>` (K values)
+* `-ctv <type>` (V values)
+
+By default, F16 precision is used.
+The safe option is `q8_0` for both K and V.
+The practical benefit comes from reduced memory consumption.
+For multi-head attention, KV cache memory consumption in bytes is $N_{layers} \times N_{batch} \times N_{ctx} \times d \times 2 \times \text{sizeof(dtype)}$, where $d$ is the embedding dimension.
+E.g., for 4k context and batch size 16, it is around 27 GB for a BF16 KV cache.
+Using 8-bit quantization, you cut a half of this consumption (equivalently, you double the maximum context).
+
+[Here](https://github.com/ggml-org/llama.cpp/pull/7412) you can find an extensive study on different combinations of weight, K and V quantization modes in terms of their effect on accuracy (ppl in their case).
+The practical conclusion is that 8-bit quantization of KV values lead to virtually no accuracy drop ($10^{-3}$ in ppl, somewhat comparable to the sampling uncertainty of the BF16 model).
+Interestingly, it is K values that are the most sensitive to quantization rather than V values (and weights are more sensitive than both K and V). 
