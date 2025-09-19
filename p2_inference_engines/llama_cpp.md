@@ -161,6 +161,7 @@ It looks like tensor parallelism but [it seems](https://github.com/ggml-org/llam
 E.g., they do not have simple optimizations for subsequent matmuls (split by columns then split by rows).
 Perhaps, this overhead is negligible if we have an NVLink bridge but it will only slow down inference if our GPUs are connected via PCIExpress only.
 The conclusion is that this mode implementation is highly suboptimal.
+Here is a [post](https://www.ahmadosman.com/blog/do-not-use-llama-cpp-or-ollama-on-multi-gpus-setups-use-vllm-or-exllamav2) on this topic.
 
 ### FlashAttention
 
