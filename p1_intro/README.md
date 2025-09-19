@@ -106,4 +106,39 @@ Let's have a look at the chat template used by Qwen 2.5:
 
 API specification: https://platform.openai.com/docs/api-reference/introduction
 
-TODO
+Typical routes are (taken from vLLM):
+```
+/openapi.json, Methods: HEAD, GET
+/docs, Methods: HEAD, GET
+/docs/oauth2-redirect, Methods: HEAD, GET
+/redoc, Methods: HEAD, GET
+/health, Methods: GET
+/load, Methods: GET
+/ping, Methods: POST
+/ping, Methods: GET
+/tokenize, Methods: POST
+/detokenize, Methods: POST
+/v1/models, Methods: GET
+/version, Methods: GET
+/v1/responses, Methods: POST
+/v1/responses/{response_id}, Methods: GET
+/v1/responses/{response_id}/cancel, Methods: POST
+/v1/chat/completions, Methods: POST
+/v1/completions, Methods: POST
+/v1/embeddings, Methods: POST
+/pooling, Methods: POST
+/classify, Methods: POST
+/score, Methods: POST
+/v1/score, Methods: POST
+/v1/audio/transcriptions, Methods: POST
+/v1/audio/translations, Methods: POST
+/rerank, Methods: POST
+/v1/rerank, Methods: POST
+/v2/rerank, Methods: POST
+/scale_elastic_ep, Methods: POST
+/is_scaling_elastic_ep, Methods: POST
+/invocations, Methods: POST
+/metrics, Methods: GET
+```
+
+For our usual chatting, we use `/v1/chat/completions`
