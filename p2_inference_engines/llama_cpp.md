@@ -7,6 +7,11 @@ While GPU was shipped to `llama.cpp` at some point, it is still in infancy compa
 The main "engine" of `llama.cpp` is `ggml`, a tensor library similar to PyTorch and TensorFlow but fully written in C/C++.
 You can have a look at [this article](https://huggingface.co/blog/introduction-to-ggml) to see how it can be used for arbitrary computations.
 
+To run a model, it must be converted to the [GGUF format](https://github.com/ggml-org/ggml/blob/master/docs/gguf.md).
+It consists of two parts: tensors and metadata.
+Metadata can be treated as `config.json`, `generation_config.json` etc. (from the HF format) combined.
+For example, you can find a Jinja template in metadata in `tokenizer.chat_template`.
+
 Here is the list of features you can count on in `llama.cpp`:
 * quantization including KV cache quantization (a significant effort has been undertaken by Georgi Gerganov to support various quantization types)
 * CPU AVX-like extensions for optimization
@@ -159,7 +164,7 @@ Theoretically, this should not be a problem in batched inference but I am not su
 Splitting by rows implies splitting all the matrix rows beforehand and sending them to dedicated GPUs.
 It looks like tensor parallelism but [it seems](https://github.com/ggml-org/llama.cpp/issues/9086) that they do `all-reduce` after each operation.
 E.g., they do not have simple optimizations for subsequent matmuls (split by columns then split by rows).
-Perhaps, this overhead is negligible if we have an NVLink bridge but it will only slow down inference if our GPUs are connected via PCIExpress only.
+Perhaps, this overhead is negligible if we have an NVLink bridge but it will only slow down inference if our GPUs are connected via PCIExpress only (pipeline parallelism should be used in this case).
 The conclusion is that this mode implementation is highly suboptimal.
 Here is a [post](https://www.ahmadosman.com/blog/do-not-use-llama-cpp-or-ollama-on-multi-gpus-setups-use-vllm-or-exllamav2) on this topic.
 
