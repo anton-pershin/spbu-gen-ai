@@ -187,5 +187,5 @@ def run_instruct_model():
     repeat(partial(generate_from_chat, tokenizer, model, chat))
 
 if __name__ == "__main__":
-    run_base_model()
+    #run_base_model()
     run_instruct_model()

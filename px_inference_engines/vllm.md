@@ -33,3 +33,25 @@ Very straightforward:
 vllm serve <model_name> --host <host> --port <port>
 ```
 Skip `--host` if you do it locally.
+
+## Distributed inference
+
+### Data parallel
+
+
+
+### Tensor parallel
+
+Add flag `--tensor-parallel-size <N>` to enable it.
+Must be a power of 2.
+The classical scenario is to use it within a single node with multiple GPUs.
+But remember that it only makes sense if GPUs are connected via NVLink 
+
+### Pipeline parallel
+
+Add flag `--pipeline-parallel-size <N>` to enable it.
+Can be any natural number.
+Can be combined with tensor parallel.
+In principle, it should be slower compared to tensor parallel when running within a single node with NVLink.
+That's why pipeline parallel is used between nodes.
+
